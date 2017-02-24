@@ -1,2 +1,1 @@
-# robticket
-练习项目
+# robticket一个实现12306自动抢票的软件
