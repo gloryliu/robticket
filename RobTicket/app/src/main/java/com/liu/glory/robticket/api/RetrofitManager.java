@@ -1,11 +1,15 @@
 package com.liu.glory.robticket.api;
 
-import java.io.IOException;
+import com.liu.glory.robticket.config.BaseUrlConfig;
+import com.liu.glory.robticket.utils.LogUtils;
 
-import okhttp3.HttpUrl;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 import retrofit2.converter.scalars.ScalarsConverterFactory;
@@ -19,54 +23,53 @@ public final class RetrofitManager {
 
 
     static Retrofit retrofit = null;
+    static OkHttpClient httpClient = null;
 
-    static HostSelectionInterceptor hostSelectionInterceptor;
+    private static Retrofit getRetrofit(){
+        if(null == retrofit){
+            retrofit = new  Retrofit.Builder()
+                    .baseUrl(BaseUrlConfig.Base_URL).client(getOkhttp())
+                    .addConverterFactory(ScalarsConverterFactory.create())
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+        }
+        return retrofit;
+    }
 
+    /**
+     * 动态代理获取api
+     * @param service
+     * @param <T>
+     * @return
+     */
+    public static <T> T  getAPI(Class<T> service){
 
-
-    public static <T> T  getAPI(String baseurl, Class<T> service){
-
-        hostSelectionInterceptor = new HostSelectionInterceptor();
-        hostSelectionInterceptor.setHost(baseurl);
-
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-                .addInterceptor(hostSelectionInterceptor)
-                .build();
-
-        retrofit = new Retrofit.Builder()
-                .callFactory(okHttpClient)
-                .addConverterFactory(ScalarsConverterFactory.create())
-                .addConverterFactory(GsonConverterFactory.create())
-                .build();
-
-        return retrofit.create(service);
+        return getRetrofit().create(service);
 
     }
 
-    static final class HostSelectionInterceptor implements Interceptor {
-        private volatile String host;
+    /**
+     * 初始化okhttp
+     * @return
+     */
+    private static OkHttpClient getOkhttp(){
+        if (null == httpClient) {
+            httpClient = new OkHttpClient.Builder().connectTimeout(30l, TimeUnit.SECONDS).readTimeout(30l, TimeUnit.SECONDS)
+                    .addInterceptor(new Interceptor() {
+                        @Override
+                        public Response intercept(Chain chain) throws IOException {
+                            Request.Builder builder = chain.request().newBuilder();
+                            //builder = addHeaders(builder);
+                            LogUtils.e("url:" + chain.request().method() + ":" + chain.request().url());
+                            Request request = builder.build();
+                            return chain.proceed(request);
+                        }
+                    })
+                    .build();
 
-        public void setHost(String host) {
-            this.host = host;
         }
-
-        @Override public okhttp3.Response intercept(Interceptor.Chain chain){
-            Request request = chain.request();
-            String host = this.host;
-            if (host != null) {
-                HttpUrl newUrl = request.url().newBuilder()
-                        .host(host)
-                        .build();
-                request = request.newBuilder()
-                        .url(newUrl)
-                        .build();
-            }
-            try {
-                return chain.proceed(request);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            return null;
-        }
+        return httpClient;
     }
+
+
 }

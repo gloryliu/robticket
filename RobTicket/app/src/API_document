@@ -1,0 +1,3 @@
+查询车票接口
+https://kyfw.12306.cn/otn/leftTicket/log?leftTicketDTO.train_date=2017-02-28&leftTicketDTO.from_station=BJP&leftTicketDTO.to_station=CDW&purpose_codes=ADULT
+查询车票接口返回值
